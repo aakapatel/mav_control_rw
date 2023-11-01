@@ -489,17 +489,18 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
   if (verbose_) {
     static int counter = 0;
     if (counter > 100) {
-      ROS_INFO_STREAM("average solve time: " << 1000.0 * solve_time_average_ / counter << " ms");
+      // ROS_INFO_STREAM("average solve time: " << 1000.0 * solve_time_average_ / counter << " ms \n");
       solve_time_average_ = 0.0;
 
-      ROS_INFO_STREAM("Controller loop time : " << diff_time * 1000.0 << " ms");
+      // ROS_INFO_STREAM("Controller loop time : " << diff_time * 1000.0 << " ms \n");
 
-      ROS_INFO_STREAM(
-          "roll ref: " << command_roll_pitch_yaw_thrust_(0)
-          << "\t" << "pitch ref : \t" << command_roll_pitch_yaw_thrust_(1)
-          << "\t" << "yaw ref : \t" << command_roll_pitch_yaw_thrust_(2)
-          << "\t" << "thrust ref : \t" << command_roll_pitch_yaw_thrust_(3)
-          << "\t" << "yawrate ref : \t" << yaw_rate_cmd);
+      std::cout <<
+          "Roll ref \t: " << command_roll_pitch_yaw_thrust_(0)
+          << "\n" << "Pitch ref \t: " << command_roll_pitch_yaw_thrust_(1)
+          << "\n" << "Yaw ref \t: " << command_roll_pitch_yaw_thrust_(2)
+          << "\n" << "Thrust ref \t: " << command_roll_pitch_yaw_thrust_(3)
+          << "\n" << "yawrate ref \t: " << yaw_rate_cmd
+          << "\n----------------------------------\n" << std::endl;
       counter = 0;
     }
     counter++;
