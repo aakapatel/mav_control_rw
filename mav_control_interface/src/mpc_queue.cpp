@@ -29,6 +29,10 @@ MPCQueue::MPCQueue(const ros::NodeHandle& nh, const ros::NodeHandle& private_nh,
       prediction_sampling_time_(0.01),
       queue_dt_(0.01),
       queue_start_time_(0.0)
+
+     // Customization
+     ,yaw_reference_unwrap_(0.0)
+     // Customization
 {
   trajectory_reference_vis_publisher_ = nh_.advertise<visualization_msgs::Marker>( "reference_trajectory", 0 );
   //publish at 10 hz
@@ -167,7 +171,21 @@ void MPCQueue::insertReferenceTrajectory(const mav_msgs::EigenTrajectoryPointDeq
       position_reference_.push_back(it->position_W);
       velocity_reference_.push_back(it->velocity_W);
       acceleration_reference_.push_back(it->acceleration_W);
-      yaw_reference_.push_back(it->getYaw());
+
+      // Customization
+      if (!yaw_reference_.empty()){
+        double delta_yaw = it->getYaw() - yaw_reference_.back();
+        if (delta_yaw > M_PI){
+          yaw_reference_unwrap_ += 2.0 * M_PI; 
+        }
+        if (delta_yaw < -M_PI){
+          yaw_reference_unwrap_ -= 2.0 * M_PI; 
+        }
+      }
+      yaw_reference_.push_back(it->getYaw() + yaw_reference_unwrap_);
+      // Customization
+      //yaw_reference_.push_back(it->getYaw());
+      
       yaw_rate_reference_.push_back(it->getYawRate());
       current_queue_size_++;
     }
@@ -186,7 +204,21 @@ void MPCQueue::pushBackPoint(const mav_msgs::EigenTrajectoryPoint& point)
     position_reference_.push_back(point.position_W);
     velocity_reference_.push_back(point.velocity_W);
     acceleration_reference_.push_back(point.acceleration_W);
-    yaw_reference_.push_back(point.getYaw());
+
+    // Customization
+    if (!yaw_reference_.empty()){
+      double delta_yaw = point.getYaw() - yaw_reference_.back();
+      if (delta_yaw > M_PI){
+        yaw_reference_unwrap_ += 2.0 * M_PI; 
+      }
+      if (delta_yaw < -M_PI){
+        yaw_reference_unwrap_ -= 2.0 * M_PI; 
+      }
+    }
+    yaw_reference_.push_back(point.getYaw() + yaw_reference_unwrap_);
+    // Customization
+    //yaw_reference_.push_back(point.getYaw());
+      
     yaw_rate_reference_.push_back(point.getYawRate());
     current_queue_size_++;
   } else {
@@ -341,10 +373,11 @@ void MPCQueue::linearInterpolateTrajectory(const mav_msgs::EigenTrajectoryPointD
 //  //fill time_output vector
   for (size_t i = 1; i < N; i++)
     time_output.push_back(time_0 + queue_dt_ns * i);
-
+     
   //for each time_output find the first larger element in the time_input vector
   for (auto it = time_output.begin(); it != time_output.end(); ++it) {
     mav_msgs::EigenTrajectoryPoint point;
+
 
     std::vector<int64_t>::iterator sol = std::upper_bound(time_input.begin(), time_input.end(),
                                                         *it);
@@ -372,6 +405,16 @@ void MPCQueue::linearInterpolateTrajectory(const mav_msgs::EigenTrajectoryPointD
 
     double yaw_2 = input_queue.at(sol - time_input.begin()).getYaw();
     double yaw_1 = input_queue.at(sol - time_input.begin() - 1).getYaw();
+
+    //Customization
+    double delta_yaw = yaw_2 - yaw_1;
+    if (delta_yaw > M_PI){
+      yaw_2 -= 2.0 * M_PI; 
+    }
+    else if (delta_yaw < -M_PI){
+      yaw_2 += 2.0 * M_PI; 
+    }
+    //Customization
 
     point.setFromYaw(yaw_1 + ((yaw_2 - yaw_1) / (time2 - time1)) * (*it - time1));
 

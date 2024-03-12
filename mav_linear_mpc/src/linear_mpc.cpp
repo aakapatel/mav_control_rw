@@ -265,7 +265,9 @@ void LinearModelPredictiveController::setOdometry(const mav_msgs::EigenOdometry&
 
   if (!received_first_odometry_) {
     Eigen::Vector3d euler_angles;
+    //mav_msgs::EigenOdometry tmpOdom = odometry;
     odometry.getEulerAngles(&euler_angles);
+    //tmpOdom.getEulerAngles(euler_angles);
 
     Eigen::VectorXd x0;
 
@@ -337,6 +339,7 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
 
   Eigen::Vector3d current_rpy;
   odometry_.getEulerAngles(&current_rpy);
+  //odometry_.getEulerAngles(current_rpy);
 
   double roll;
   double pitch;
@@ -447,13 +450,21 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
     linearized_command_roll_pitch_thrust_ = linearized_command_roll_pitch_thrust_.cwiseMin(
         Eigen::Vector3d(roll_limit_, pitch_limit_, thrust_max_));
   }
-
+    
   command_roll_pitch_yaw_thrust_(3) = (linearized_command_roll_pitch_thrust_(2) + kGravity)
       / (cos(roll) * cos(pitch));
   double ux = linearized_command_roll_pitch_thrust_(1)
       * (kGravity / command_roll_pitch_yaw_thrust_(3));
   double uy = linearized_command_roll_pitch_thrust_(0)
       * (kGravity / command_roll_pitch_yaw_thrust_(3));
+
+  /* HUAN: limit the final thrust */
+  if (command_roll_pitch_yaw_thrust_(3) > thrust_max_ + kGravity) {
+    command_roll_pitch_yaw_thrust_(3) = thrust_max_ + kGravity;
+  }
+  else if (command_roll_pitch_yaw_thrust_(3) < thrust_min_ + kGravity) {
+    command_roll_pitch_yaw_thrust_(3) = thrust_min_ + kGravity;
+  }
 
   command_roll_pitch_yaw_thrust_(0) = ux * sin(yaw) + uy * cos(yaw);
   command_roll_pitch_yaw_thrust_(1) = ux * cos(yaw) - uy * sin(yaw);
@@ -489,10 +500,10 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
   if (verbose_) {
     static int counter = 0;
     if (counter > 100) {
-      // ROS_INFO_STREAM("average solve time: " << 1000.0 * solve_time_average_ / counter << " ms \n");
+      //ROS_INFO_STREAM("average solve time: " << 1000.0 * solve_time_average_ / counter << " ms");
       solve_time_average_ = 0.0;
 
-      // ROS_INFO_STREAM("Controller loop time : " << diff_time * 1000.0 << " ms \n");
+      //ROS_INFO_STREAM("Controller loop time : " << diff_time * 1000.0 << " ms");
 
       std::cout <<
           "Roll ref \t: " << command_roll_pitch_yaw_thrust_(0)
@@ -501,7 +512,10 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
           << "\n" << "Thrust ref \t: " << command_roll_pitch_yaw_thrust_(3)
           << "\n" << "yawrate ref \t: " << yaw_rate_cmd
           << "\n----------------------------------\n" << std::endl;
-      counter = 0;
+
+
+
+    counter = 0;
     }
     counter++;
   }
@@ -515,6 +529,14 @@ bool LinearModelPredictiveController::getCurrentReference(
   (*reference).position_W = position_ref_.front();
   (*reference).velocity_W = velocity_ref_.front();
   (*reference).setFromYaw(yaw_ref_.front());
+/*
+      std::cout <<
+             "\n" << "X ref \t: " << (*reference).position_W.x()
+          << "\n" << "Y ref \t: " << (*reference).position_W.y()
+          << "\n" << "Z ref \t: " << (*reference).position_W.z()
+          << "\n----------------------------------\n" << std::endl;
+  
+*/
 
   return true;
 }
