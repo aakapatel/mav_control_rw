@@ -37,6 +37,7 @@ StateMachineDefinition::StateMachineDefinition(const ros::NodeHandle& nh, const 
   current_reference_publisher_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>(
       "command/current_reference", 1);
 
+
   state_info_publisher_ = nh_.advertise<std_msgs::String>("state_machine/state_info", 1, true);
 
   private_nh_.param<bool>("use_rc_teleop", use_rc_teleop_, true);

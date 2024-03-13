@@ -25,13 +25,13 @@
 #include <nav_msgs/Odometry.h>
 #include <std_srvs/Empty.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
-
+#include "sensor_msgs/Range.h"
 #include <mav_control_interface/deadzone.h>
 #include <mav_control_interface/position_controller_interface.h>
 #include <mav_control_interface/rc_interface.h>
 
 #include "state_machine.h"
-
+#include <tf/tf.h>
 namespace mav_control_interface {
 
 class MavControlInterfaceImpl
@@ -50,13 +50,16 @@ class MavControlInterfaceImpl
   ros::NodeHandle private_nh_;
 
   ros::Subscriber odometry_subscriber_;
+  ros::Subscriber range_subscriber_;
   ros::Subscriber command_trajectory_subscriber_;
   ros::Subscriber command_trajectory_array_subscriber_;
   ros::Timer odometry_watchdog_;
-
+  double sbl_range_;
   ros::ServiceServer takeoff_server_;
-  ros::ServiceServer back_to_position_hold_server_;
+  ros::ServiceServer landing_server_;
+  ros::ServiceServer thrust_cutoff_server_;
 
+  bool land_command_received_ = false;
   std::shared_ptr<RcInterfaceBase> rc_interface_;
 
   std::unique_ptr<state_machine::StateMachine> state_machine_;
@@ -67,8 +70,11 @@ class MavControlInterfaceImpl
   void OdometryWatchdogCallback(const ros::TimerEvent& e);
   void RcUpdatedCallback(const RcInterfaceBase&);
   bool TakeoffCallback(std_srvs::EmptyRequest& request, std_srvs::EmptyResponse& response);
-  bool BackToPositionHoldCallback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
-
+  bool LandingCallback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
+  
+  bool ThrustCutoffCallback(std_srvs::Empty::Request& request,
+                            std_srvs::Empty::Response& response);
+  void RangeCallback(const sensor_msgs::Range& msg); 
   void publishAttitudeCommand(const mav_msgs::RollPitchYawrateThrust& command);
 };
 

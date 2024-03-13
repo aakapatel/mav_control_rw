@@ -34,6 +34,7 @@ class MavControlInterface
   MavControlInterface(ros::NodeHandle& nh, ros::NodeHandle& private_nh,
                       std::shared_ptr<PositionControllerInterface> controller,
                       std::shared_ptr<RcInterfaceBase> rc_interface);
+  
 
   ~MavControlInterface();
  private:

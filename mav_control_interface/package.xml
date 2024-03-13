@@ -9,10 +9,12 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
+  <buildtool_depend>sensor_msgs</buildtool_depend>
 
   <depend>cmake_modules</depend>
   <depend>roscpp</depend>
   <depend>mav_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>

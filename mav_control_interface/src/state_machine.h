@@ -30,7 +30,6 @@
 #include <boost/msm/front/functor_row.hpp>
 #include <boost/msm/front/euml/common.hpp>
 #include <boost/msm/front/euml/operator.hpp>
-
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/eigen_mav_msgs.h>
 #include <ros/ros.h>
@@ -86,6 +85,8 @@ struct OdometryUpdate
 
 struct BackToPositionHold {};
 struct Takeoff {};
+struct Land {};
+struct ThrustCutoff {};
 struct OdometryWatchdog {};
 
 class StateMachineDefinition;
@@ -116,6 +117,8 @@ class StateMachineDefinition : public msm_front::state_machine_def<StateMachineD
   struct ComputeCommand;
   struct SetReferenceFromRc;
   struct SetTakeoffCommands;
+  struct SetLandCommands;
+  struct SetLandingThrustCommands;
   struct PrintOdometryWatchdogWarning;
 
   // Guards
@@ -151,6 +154,8 @@ class StateMachineDefinition : public msm_front::state_machine_def<StateMachineD
       msm_front::Row<Inactive, OdometryWatchdog, InternalTransition, PrintOdometryWatchdogWarning, OdometryOutdated >,
       msm_front::Row<Inactive, OdometryUpdate, InternalTransition, SetOdometry, NoGuard >,
       msm_front::Row<Inactive, Takeoff, PositionHold, SetTakeoffCommands, NoRCTeleop>,
+      msm_front::Row<PositionHold, Land, InternalTransition, SetLandCommands, NoRCTeleop>,
+      msm_front::Row<PositionHold, ThrustCutoff, InternalTransition, SetLandingThrustCommands, NoRCTeleop>,
       //  +---------+-------------+---------+---------------------------+----------------------+
       msm_front::Row<RemoteControl, RcUpdate, InternalTransition, SetReferenceAttitude, RcModeNotManual >,
       msm_front::Row<RemoteControl, RcUpdate, RemoteControlReadyForOdometry, SetReferenceAttitude, RcModeManual >,
@@ -210,6 +215,7 @@ private:
   ros::Publisher command_publisher_;
   ros::Publisher state_info_publisher_;
 
+
   tf::TransformBroadcaster transform_broadcaster_;
   ros::Publisher current_reference_publisher_;
   ros::Publisher predicted_state_publisher_;
@@ -224,6 +230,7 @@ private:
   void PublishStateInfo(const std::string& info);
   void PublishCurrentReference();
   void PublishPredictedState();
+
 
   // Implementation of state machine:
 
@@ -342,12 +349,14 @@ private:
   {
     template<class EVT, class FSM, class SourceState, class TargetState>
     void operator()(EVT const& evt, FSM& fsm, SourceState&, TargetState&)
-    {
+    { 
+
       mav_msgs::EigenRollPitchYawrateThrust command;
       fsm.controller_->calculateRollPitchYawrateThrustCommand(&command);
       fsm.PublishAttitudeCommand(command);
       fsm.PublishCurrentReference();
       fsm.PublishPredictedState();
+
     }
   };
 
@@ -506,6 +515,82 @@ private:
       ROS_INFO_STREAM("final take off position: " << trajectory_point.position_W.transpose());
       //fsm.controller_->setReferenceArray(current_reference_queue);
       fsm.controller_->setReference(trajectory_point);
+    }
+  };
+
+  struct SetLandCommands
+  {
+    template<class FSM, class SourceState>
+    void operator()(const Land& evt, FSM& fsm, SourceState& src_state, PositionHold&)
+    {
+      constexpr double dt = 0.01;  // TODDO(acmarkus): FIX!!!!!!
+      constexpr double seconds_to_ns = 1.0e9;
+      const int64_t dt_ns = static_cast<int64_t>(dt * seconds_to_ns);
+
+      const Parameters& p = fsm.parameters_;
+      mav_msgs::EigenOdometry& current_state = fsm.current_state_;
+      mav_msgs::EigenTrajectoryPointDeque& current_reference_queue = fsm.current_reference_queue_;
+      current_reference_queue.clear();
+
+//      mav_msgs::EigenTrajectoryPoint trajectory_point;
+//      trajectory_point.time_from_start_ns = 0;
+//      trajectory_point.position_W = current_state.position_W;
+//
+//      constexpr double negative_distance_z = 0.5;
+//      trajectory_point.position_W.z() -= negative_distance_z;
+//      trajectory_point.setFromYaw(mav_msgs::yawFromQuaternion(current_state.orientation_W_B));
+//      current_reference_queue.push_back(trajectory_point);
+//
+//      const int64_t takeoff_time_below_ground_ns = static_cast<int64_t>(p.takeoff_time_ * 0.5 * seconds_to_ns);
+//      double increment_z = negative_distance_z / (p.takeoff_time_ * 0.5 / dt);
+//      for (int64_t t_ns = 0; t_ns < takeoff_time_below_ground_ns; t_ns += dt_ns) {
+//        trajectory_point.position_W.z() += increment_z;
+//        trajectory_point.time_from_start_ns = t_ns;
+//        current_reference_queue.push_back(trajectory_point);
+//      }
+//
+//      const int64_t takeoff_time_ns = static_cast<int64_t>(p.takeoff_time_ * seconds_to_ns);
+//      increment_z = p.takeoff_distance_ / (p.takeoff_time_ / dt);
+//      for (int64_t t_ns = trajectory_point.time_from_start_ns;
+//          t_ns < takeoff_time_below_ground_ns + takeoff_time_ns; t_ns += dt_ns) {
+//        trajectory_point.position_W.z() += increment_z;
+//        trajectory_point.time_from_start_ns = t_ns;
+//        current_reference_queue.push_back(trajectory_point);
+//      }
+
+
+      mav_msgs::EigenTrajectoryPoint trajectory_point;
+      trajectory_point.time_from_start_ns = 0;
+      trajectory_point.position_W = current_state.position_W;
+      trajectory_point.position_W.z() -= p.takeoff_distance_;
+      trajectory_point.setFromYaw(mav_msgs::yawFromQuaternion(current_state.orientation_W_B));
+      current_reference_queue.push_back(trajectory_point);
+
+      ROS_INFO_STREAM("final landing position: " << trajectory_point.position_W.transpose());
+      //fsm.controller_->setReferenceArray(current_reference_queue);
+      fsm.controller_->setReference(trajectory_point);
+      // landing_triggered_ = true;
+
+    }
+  };
+
+
+
+  struct SetLandingThrustCommands 
+  {
+
+    template<class FSM, class SourceState>
+    void operator()(const ThrustCutoff& evt, FSM& fsm, SourceState& src_state, PositionHold&)
+    { 
+      while(1) {
+
+      mav_msgs::EigenRollPitchYawrateThrust command;
+      command.pitch = 0;
+      command.roll = 0;
+      command.yaw_rate = 0;
+      command.thrust.z() = 0;
+      fsm.PublishAttitudeCommand(command);
+      }
     }
   };
 

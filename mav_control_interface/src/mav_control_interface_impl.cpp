@@ -20,7 +20,7 @@
 #include <mav_msgs/AttitudeThrust.h>
 #include <mav_msgs/RollPitchYawrateThrust.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
-
+#include <tf/tf.h>
 #include "mav_control_interface_impl.h"
 #include "parameters.h"
 
@@ -51,13 +51,20 @@ MavControlInterfaceImpl::MavControlInterfaceImpl(ros::NodeHandle& nh, ros::NodeH
                                        &MavControlInterfaceImpl::OdometryCallback, this,
                                        ros::TransportHints().tcpNoDelay());
 
+  range_subscriber_ = nh_.subscribe("/hummingbird/sbl_down_range", 5,
+                                       &MavControlInterfaceImpl::RangeCallback, this,
+                                       ros::TransportHints().tcpNoDelay());
+  
   rc_interface_->registerUpdatedCallback(&MavControlInterfaceImpl::RcUpdatedCallback, this);
 
   takeoff_server_ = nh.advertiseService("takeoff", &MavControlInterfaceImpl::TakeoffCallback, this);
-  back_to_position_hold_server_ = nh.advertiseService("back_to_position_hold",
-                                                      &MavControlInterfaceImpl::BackToPositionHoldCallback,
-                                                      this);
+  landing_server_ = nh.advertiseService("land",
+                                 &MavControlInterfaceImpl::LandingCallback,
+                                 this);
 
+  thrust_cutoff_server_ = nh.advertiseService("cutoff_thrust",
+                                              &MavControlInterfaceImpl::ThrustCutoffCallback,
+                                              this);
   state_machine_.reset(new state_machine::StateMachine(nh_, private_nh_, controller));
 
   Parameters p;
@@ -101,15 +108,32 @@ void MavControlInterfaceImpl::RcUpdatedCallback(const RcInterfaceBase& rc_interf
 
 void MavControlInterfaceImpl::CommandPoseCallback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
+  
+  if (!land_command_received_) {
 
-  mav_msgs::EigenTrajectoryPoint reference;
-  mav_msgs::eigenTrajectoryPointFromPoseMsg(*msg, &reference);
+    mav_msgs::EigenTrajectoryPoint reference;
+    mav_msgs::eigenTrajectoryPointFromPoseMsg(*msg, &reference);
 
-  mav_msgs::EigenTrajectoryPointDeque references;
-  references.push_back(reference);
+    mav_msgs::EigenTrajectoryPointDeque references;
+    references.push_back(reference);
 
-  state_machine_->process_event(state_machine::ReferenceUpdate(references));
+    state_machine_->process_event(state_machine::ReferenceUpdate(references));
+  
+  } else {
+    std::cout << "landing initialized ? " << std::endl;
+  }
+
 }
+
+
+void MavControlInterfaceImpl::RangeCallback(const sensor_msgs::Range& msg) {
+
+  sbl_range_ = msg.range;
+
+  // std::cout << "sbl range : " << sbl_range_ << std::endl;
+
+} 
+
 
 void MavControlInterfaceImpl::CommandTrajectoryCallback(
     const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& msg)
@@ -118,11 +142,17 @@ void MavControlInterfaceImpl::CommandTrajectoryCallback(
   if (array_size == 0)
     return;
 
-  mav_msgs::EigenTrajectoryPointDeque references;
-  mav_msgs::eigenTrajectoryPointDequeFromMsg(*msg, &references);
+  if (!land_command_received_) {
+    mav_msgs::EigenTrajectoryPointDeque references;
+    mav_msgs::eigenTrajectoryPointDequeFromMsg(*msg, &references);
 
-  state_machine_->process_event(state_machine::ReferenceUpdate(references));
-}
+    state_machine_->process_event(state_machine::ReferenceUpdate(references));
+
+  } else {
+    std::cout << "landing initialized ? " << std::endl;
+  }
+
+  }
 
 void MavControlInterfaceImpl::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg)
 {
@@ -147,12 +177,38 @@ bool MavControlInterfaceImpl::TakeoffCallback(std_srvs::Empty::Request& request,
   return true;
 }
 
-bool MavControlInterfaceImpl::BackToPositionHoldCallback(std_srvs::Empty::Request& request,
-                                                         std_srvs::Empty::Response& response)
-{
-  state_machine_->process_event(state_machine::BackToPositionHold());
+bool MavControlInterfaceImpl::LandingCallback(std_srvs::Empty::Request& request,
+                                              std_srvs::Empty::Response& response)
+{ 
+  
+  land_command_received_ = true;
+
+  std::cout << "landing attempt " << std::endl;
+
+  // state_machine_->process_event(state_machine::BackToPositionHold());
+  state_machine_->process_event(state_machine::Land());
+  
   return true;
 }
+
+bool MavControlInterfaceImpl::ThrustCutoffCallback(std_srvs::Empty::Request& request,
+                                                   std_srvs::Empty::Response& response)
+{ 
+  
+  land_command_received_ = true;
+
+  // if (sbl_range_ < 0.3) {
+
+    std::cout << "Thrust cuttoff height : " << sbl_range_ << std::endl;
+    
+    state_machine_->process_event(state_machine::ThrustCutoff());
+
+    std::cout << "Thrust --> zero ? " << std::endl;
+  // } 
+
+  return true;
+}
+
 
 }  // end namespace mav_control_interface
 

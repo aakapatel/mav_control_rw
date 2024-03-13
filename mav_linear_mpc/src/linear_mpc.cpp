@@ -505,13 +505,13 @@ void LinearModelPredictiveController::calculateRollPitchYawrateThrustCommand(
 
       //ROS_INFO_STREAM("Controller loop time : " << diff_time * 1000.0 << " ms");
 
-      std::cout <<
-          "Roll ref \t: " << command_roll_pitch_yaw_thrust_(0)
-          << "\n" << "Pitch ref \t: " << command_roll_pitch_yaw_thrust_(1)
-          << "\n" << "Yaw ref \t: " << command_roll_pitch_yaw_thrust_(2)
-          << "\n" << "Thrust ref \t: " << command_roll_pitch_yaw_thrust_(3)
-          << "\n" << "yawrate ref \t: " << yaw_rate_cmd
-          << "\n----------------------------------\n" << std::endl;
+      // std::cout <<
+      //     "Roll ref \t: " << command_roll_pitch_yaw_thrust_(0)
+      //     << "\n" << "Pitch ref \t: " << command_roll_pitch_yaw_thrust_(1)
+      //     << "\n" << "Yaw ref \t: " << command_roll_pitch_yaw_thrust_(2)
+      //     << "\n" << "Thrust ref \t: " << command_roll_pitch_yaw_thrust_(3)
+      //     << "\n" << "yawrate ref \t: " << yaw_rate_cmd
+      //     << "\n----------------------------------\n" << std::endl;
 
 
 
