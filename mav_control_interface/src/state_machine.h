@@ -478,33 +478,6 @@ private:
       mav_msgs::EigenTrajectoryPointDeque& current_reference_queue = fsm.current_reference_queue_;
       current_reference_queue.clear();
 
-//      mav_msgs::EigenTrajectoryPoint trajectory_point;
-//      trajectory_point.time_from_start_ns = 0;
-//      trajectory_point.position_W = current_state.position_W;
-//
-//      constexpr double negative_distance_z = 0.5;
-//      trajectory_point.position_W.z() -= negative_distance_z;
-//      trajectory_point.setFromYaw(mav_msgs::yawFromQuaternion(current_state.orientation_W_B));
-//      current_reference_queue.push_back(trajectory_point);
-//
-//      const int64_t takeoff_time_below_ground_ns = static_cast<int64_t>(p.takeoff_time_ * 0.5 * seconds_to_ns);
-//      double increment_z = negative_distance_z / (p.takeoff_time_ * 0.5 / dt);
-//      for (int64_t t_ns = 0; t_ns < takeoff_time_below_ground_ns; t_ns += dt_ns) {
-//        trajectory_point.position_W.z() += increment_z;
-//        trajectory_point.time_from_start_ns = t_ns;
-//        current_reference_queue.push_back(trajectory_point);
-//      }
-//
-//      const int64_t takeoff_time_ns = static_cast<int64_t>(p.takeoff_time_ * seconds_to_ns);
-//      increment_z = p.takeoff_distance_ / (p.takeoff_time_ / dt);
-//      for (int64_t t_ns = trajectory_point.time_from_start_ns;
-//          t_ns < takeoff_time_below_ground_ns + takeoff_time_ns; t_ns += dt_ns) {
-//        trajectory_point.position_W.z() += increment_z;
-//        trajectory_point.time_from_start_ns = t_ns;
-//        current_reference_queue.push_back(trajectory_point);
-//      }
-
-
       mav_msgs::EigenTrajectoryPoint trajectory_point;
       trajectory_point.time_from_start_ns = 0;
       trajectory_point.position_W = current_state.position_W;
@@ -532,41 +505,15 @@ private:
       mav_msgs::EigenTrajectoryPointDeque& current_reference_queue = fsm.current_reference_queue_;
       current_reference_queue.clear();
 
-//      mav_msgs::EigenTrajectoryPoint trajectory_point;
-//      trajectory_point.time_from_start_ns = 0;
-//      trajectory_point.position_W = current_state.position_W;
-//
-//      constexpr double negative_distance_z = 0.5;
-//      trajectory_point.position_W.z() -= negative_distance_z;
-//      trajectory_point.setFromYaw(mav_msgs::yawFromQuaternion(current_state.orientation_W_B));
-//      current_reference_queue.push_back(trajectory_point);
-//
-//      const int64_t takeoff_time_below_ground_ns = static_cast<int64_t>(p.takeoff_time_ * 0.5 * seconds_to_ns);
-//      double increment_z = negative_distance_z / (p.takeoff_time_ * 0.5 / dt);
-//      for (int64_t t_ns = 0; t_ns < takeoff_time_below_ground_ns; t_ns += dt_ns) {
-//        trajectory_point.position_W.z() += increment_z;
-//        trajectory_point.time_from_start_ns = t_ns;
-//        current_reference_queue.push_back(trajectory_point);
-//      }
-//
-//      const int64_t takeoff_time_ns = static_cast<int64_t>(p.takeoff_time_ * seconds_to_ns);
-//      increment_z = p.takeoff_distance_ / (p.takeoff_time_ / dt);
-//      for (int64_t t_ns = trajectory_point.time_from_start_ns;
-//          t_ns < takeoff_time_below_ground_ns + takeoff_time_ns; t_ns += dt_ns) {
-//        trajectory_point.position_W.z() += increment_z;
-//        trajectory_point.time_from_start_ns = t_ns;
-//        current_reference_queue.push_back(trajectory_point);
-//      }
-
-
       mav_msgs::EigenTrajectoryPoint trajectory_point;
       trajectory_point.time_from_start_ns = 0;
       trajectory_point.position_W = current_state.position_W;
-      trajectory_point.position_W.z() -= p.takeoff_distance_;
+      // trajectory_point.position_W.z() -= p.takeoff_distance_;
+      trajectory_point.position_W.z() = current_state.position_W.z() - 0.1;
       trajectory_point.setFromYaw(mav_msgs::yawFromQuaternion(current_state.orientation_W_B));
       current_reference_queue.push_back(trajectory_point);
 
-      ROS_INFO_STREAM("final landing position: " << trajectory_point.position_W.transpose());
+      // ROS_INFO_STREAM("final landing position: " << trajectory_point.position_W.transpose());
       //fsm.controller_->setReferenceArray(current_reference_queue);
       fsm.controller_->setReference(trajectory_point);
       // landing_triggered_ = true;

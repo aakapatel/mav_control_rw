@@ -54,6 +54,7 @@ class MavControlInterfaceImpl
   ros::Subscriber command_trajectory_subscriber_;
   ros::Subscriber command_trajectory_array_subscriber_;
   ros::Timer odometry_watchdog_;
+  ros::Timer landing_watchdog_;
   double sbl_range_;
   ros::ServiceServer takeoff_server_;
   ros::ServiceServer landing_server_;
@@ -68,6 +69,7 @@ class MavControlInterfaceImpl
   void CommandTrajectoryCallback(const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& msg);
   void OdometryCallback(const nav_msgs::OdometryConstPtr& msg);
   void OdometryWatchdogCallback(const ros::TimerEvent& e);
+  void performLanding(const ros::TimerEvent& e);
   void RcUpdatedCallback(const RcInterfaceBase&);
   bool TakeoffCallback(std_srvs::EmptyRequest& request, std_srvs::EmptyResponse& response);
   bool LandingCallback(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);

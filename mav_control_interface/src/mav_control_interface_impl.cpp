@@ -40,6 +40,8 @@ MavControlInterfaceImpl::MavControlInterfaceImpl(ros::NodeHandle& nh, ros::NodeH
   odometry_watchdog_ = nh_.createTimer(ros::Duration(kOdometryWatchdogTimeout),
                                        &MavControlInterfaceImpl::OdometryWatchdogCallback, this, false, true);
 
+  landing_watchdog_ = nh_.createTimer(ros::Duration(0.1),
+                                       &MavControlInterfaceImpl::performLanding, this, false, true);
   command_trajectory_subscriber_ = nh_.subscribe(mav_msgs::default_topics::COMMAND_POSE, 1,
                                                  &MavControlInterfaceImpl::CommandPoseCallback, this);
 
@@ -51,7 +53,7 @@ MavControlInterfaceImpl::MavControlInterfaceImpl(ros::NodeHandle& nh, ros::NodeH
                                        &MavControlInterfaceImpl::OdometryCallback, this,
                                        ros::TransportHints().tcpNoDelay());
 
-  range_subscriber_ = nh_.subscribe("/hummingbird/sbl_down_range", 5,
+  range_subscriber_ = nh_.subscribe("sbl", 5,
                                        &MavControlInterfaceImpl::RangeCallback, this,
                                        ros::TransportHints().tcpNoDelay());
   
@@ -177,6 +179,29 @@ bool MavControlInterfaceImpl::TakeoffCallback(std_srvs::Empty::Request& request,
   return true;
 }
 
+void MavControlInterfaceImpl::performLanding(const ros::TimerEvent& e) {
+
+  if (land_command_received_) {
+
+    state_machine_->process_event(state_machine::Land());
+    
+    if (sbl_range_ > 0.2) {
+
+      state_machine_->process_event(state_machine::Land());
+    
+    } else {
+
+        std::cout << "Ready to cut off thrust " << std::endl;
+
+        std::cout << "Thrust cuttoff height : " << sbl_range_ << std::endl;
+
+        state_machine_->process_event(state_machine::ThrustCutoff());
+    }
+
+  }
+
+}
+
 bool MavControlInterfaceImpl::LandingCallback(std_srvs::Empty::Request& request,
                                               std_srvs::Empty::Response& response)
 { 
@@ -184,9 +209,11 @@ bool MavControlInterfaceImpl::LandingCallback(std_srvs::Empty::Request& request,
   land_command_received_ = true;
 
   std::cout << "landing attempt " << std::endl;
+  
+  // state_machine_->process_event(state_machine::Land());
 
   // state_machine_->process_event(state_machine::BackToPositionHold());
-  state_machine_->process_event(state_machine::Land());
+  // state_machine_->process_event(state_machine::Land());
   
   return true;
 }
