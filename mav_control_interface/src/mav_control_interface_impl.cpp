@@ -154,7 +154,7 @@ void MavControlInterfaceImpl::CommandTrajectoryCallback(
     std::cout << "landing initialized ? " << std::endl;
   }
 
-  }
+}
 
 void MavControlInterfaceImpl::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg)
 {
@@ -174,6 +174,7 @@ void MavControlInterfaceImpl::OdometryWatchdogCallback(const ros::TimerEvent& e)
 bool MavControlInterfaceImpl::TakeoffCallback(std_srvs::Empty::Request& request,
                                               std_srvs::Empty::Response& response)
 {
+  land_command_received_ = false;
   ROS_INFO("Take off event sent");
   state_machine_->process_event(state_machine::Takeoff());
   return true;

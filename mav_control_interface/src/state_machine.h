@@ -529,7 +529,7 @@ private:
     template<class FSM, class SourceState>
     void operator()(const ThrustCutoff& evt, FSM& fsm, SourceState& src_state, PositionHold&)
     { 
-      while(1) {
+      // while(1) {
 
       mav_msgs::EigenRollPitchYawrateThrust command;
       command.pitch = 0;
@@ -537,7 +537,7 @@ private:
       command.yaw_rate = 0;
       command.thrust.z() = 0;
       fsm.PublishAttitudeCommand(command);
-      }
+      // }
     }
   };
 
