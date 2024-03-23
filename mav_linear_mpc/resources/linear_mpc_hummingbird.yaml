@@ -37,8 +37,8 @@ r_droll: 0.3
 r_dpitch: 0.3
 r_dthrust: 0.0025
 
-roll_max: deg(5.0)
-pitch_max: deg(5.0)
+roll_max: deg(25.0)
+pitch_max: deg(25.0)
 yaw_rate_max: deg(90)
 thrust_min: 5 #m/s^2
 thrust_max: 20 #m/s^2
